@@ -1,0 +1,79 @@
+## configuration file for 'ecorrect' (.py)
+
+## If this file is named 'ecorrect.yml', it will be loaded automatically
+## if located in the same folder.
+## Otherwise you can just set:
+
+## Please type your name here
+corrector : "Mister Critical"
+
+# target_zip : "CS1000.010-WS19-Abgabe_Uebungsblatt_0-Fr_12-14_O27_-_2202-163966.zip"
+
+## Path to unpack the zip:
+# working_dir : "/tmp/zip_tmp"
+
+## this path holds the correction if 'clean_dirs' is set, they will be deleted before each launch
+# correction_dir : "./Abgaben"
+## If you want to keep the folders:
+# clean_dirs : no
+
+## you can set your preferred text editors for specific file-types
+# viewers :
+#    pdf: "okular"
+#    java : "code"
+
+## The text-editor to be used for corrections
+# text_editor : "code"
+
+## List of files you want to see from every group/person
+## You should set a viewer in 'viewers' for the file ending
+## They have to be valid glob - specifications
+# files_of_interest:
+#    - "**/*.pdf"
+#    - "**/*.java"
+
+## Builds up the data for a sheet,
+## if only one task is specified, no subtasks will
+## be generated
+sheet_data:
+  - name: "Aufgabe 1: Analyse eines Stachelschweins"
+    tasks:
+      - 2 # Punkte
+      - 11
+      - 7
+  - name: "Aufgabe 2: Operation: Waffel"
+    tasks:
+      - 9
+      - 42
+      - -7
+
+## name_patterns :
+## - "Abgabe_Uebungsblatt_(?P<Number>\d+)--(?P<WeekDay>Mo|Di|Mi|Do|Fr|Sa|So)_(?P<StartTime>\d+)-(?P<EndTime>\d+)_(?P<Where>[A-Za-z0-9]*)_-_(?P<WhereRoom>[A-Za-z0-9]*)--(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)_(?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)--(?P<FileName>[a-zäöüÄÖÜß0-9 _\-]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)"
+## - ...
+## Kann verwendet werden wenn sich die Benennung ändert.
+
+## Information: ß translates to s (done automatically by moodle and therefore by ecorrect)
+# partners:
+#   - name: Team-Dieter
+#     members:
+#     - Dieter Günther
+#     - Günther Dieter
+#   - name: Alpha-Zentauri
+#     members:
+#     - Super-Toller Mensch
+#     - Mega Super-Mensch
+
+## If you just want to see the correction:
+# quick_correction: no
+
+## If you want to style your correction-template:
+# correction_template:
+#   "pre" : "" # Text before the template, no newline
+#   "in" : "" # Text after the Names
+#   "mid" : "" # Text between & after exercises, only active if 'sheet_data' is set
+#   "mid-sub" : "" # Text between & after subtasks, only active if 'sheet_data' is set
+#   "out" : "" # Text after task-block
+#   "post" : "" # Text after template, no newline
+
+## If you do not want to press 'Enter':
+# request_enter: no
