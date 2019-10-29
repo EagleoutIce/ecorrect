@@ -63,7 +63,7 @@ sheet_data:
 #     - Super-Toller Mensch
 #     - Mega Super-Mensch
 
-## If you just want to see the correction:
+## If you just want to group the files:
 # quick_correction: no
 
 ## If you want to style your correction-template:
@@ -77,3 +77,12 @@ sheet_data:
 
 ## If you do not want to press 'Enter':
 # request_enter: no
+
+## If there are other special characters being truncated by the .zip add them here:
+# replace_characters:
+#   "ß" : "s"
+#   "ä" : "ae"
+#   "ö" : "oe"
+#   "ü" : "ue"
+#   "á" : ""
+#   "é" : ""

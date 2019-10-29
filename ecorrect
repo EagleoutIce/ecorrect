@@ -73,7 +73,11 @@ ec_config = {
         "out" : "", # Text after task-block
         "post" : "" # Text after template, no newline
     },
-    "request_enter" : True
+    "request_enter" : True,
+    "replace_characters" : {# will be replaced when searching for group
+        "ß" : "s", "ä" : "ae", "ö" : "oe",
+        "ü" : "ue", "á" : "", "é" : ""
+    }
 }
 
 # We want to check the configuration with the read one,
@@ -152,24 +156,24 @@ def extract_zip(file,path):
 # test_str = "Abgabe_Uebungsblatt_0--Fr_12-14_O27_-_2202--Name_censored--Hello.java"
 # print(re.search(ec_config["name_patterns"][0], test_str, re.IGNORECASE).groupdict())
 
-if len(sys.argv) == 2: # arg given
-    arg = sys.argv[1]
-    if arg.endswith(".yml") or arg.endswith(".yaml"):
-        print("Parsing config file....")
-        parse_yaml(arg)
-    elif arg.endswith(".zip"):
-        ec_config["target_zip"] = arg
-    else:
-        print("The specified file seems to be invalid. Please supply a .zip or .yaml-File!")
-        sys.exit(1)
-else:
-    print("Please supply a .zip or .yaml-File!")
-    sys.exit(1)
-
 if os.path.isfile("./ecorrect.yml"): # maybe allow 'yaml' too?
     print("Automatically loading 'ecorrect.yml'")
     parse_yaml("ecorrect.yml")
 
+if len(sys.argv) >= 2: # arg given
+    for arg in sys.argv[1:]:
+        # print("At: " + arg)
+        if arg.endswith(".yml") or arg.endswith(".yaml"):
+            print("Parsing config file....")
+            parse_yaml(arg)
+        elif arg.endswith(".zip"):
+            ec_config["target_zip"] = arg
+        else:
+            print("The specified file seems to be invalid. Please supply a .zip or .yaml-File!")
+            sys.exit(1)
+else:
+    print("Please supply a .zip or .yaml-File!")
+    sys.exit(1)
 
 # delete working dir:
 if ec_config["clean_dirs"]:
@@ -195,9 +199,13 @@ def check_match(regarray,string):
 
 # searches for partners
 def get_partner(firstname,lastname):
+    name = firstname + " " + lastname
     for group in ec_config["partners"]:
         for member in group["members"]:
-            if member.replace("ß","s") == (firstname + " " + lastname).replace("ß","s"):
+            for repl in ec_config["replace_characters"]:
+                member = member.replace(repl, ec_config["replace_characters"][repl])
+                name = name.replace(repl, ec_config["replace_characters"][repl])
+            if member == name:
                 return group;
     return None
 
@@ -257,17 +265,16 @@ def decode_by_groupname(groupname):
                 return ", ".join(members)
     return groupname
 
-
-for dirname in sorted(os.listdir(ec_config["correction_dir"])):
-    print("\033[34mShowing Data for: '" + dirname + "'\033[0m")
-    # iterate over all files of interest
-    tar_grouppath = os.path.join(ec_config["correction_dir"],dirname)
-    all_files = []
-    for pattern in ec_config["files_of_interest"]:
-        open_file = is_of_interest(tar_grouppath,pattern)
-        if open_file != None:
-            all_files.append(open_file)
-    if(ec_config["quick_correction"]):
+if(ec_config["quick_correction"]):
+    for dirname in sorted(os.listdir(ec_config["correction_dir"])):
+        print("\033[34mShowing Data for: '" + dirname + "'\033[0m")
+        # iterate over all files of interest
+        tar_grouppath = os.path.join(ec_config["correction_dir"],dirname)
+        all_files = []
+        for pattern in ec_config["files_of_interest"]:
+            open_file = is_of_interest(tar_grouppath,pattern)
+            if open_file != None:
+                all_files.append(open_file)
         correction_file = os.path.join(tar_grouppath,"korrektur-" + dirname.replace("Group: ","").replace(" ","_") + ".txt") # replace is sloppy
         if(len(ec_config["sheet_data"]) == 0):
             if(ec_config["request_enter"]):
@@ -305,11 +312,11 @@ for dirname in sorted(os.listdir(ec_config["correction_dir"])):
                     correction.write(ec_config["correction_template"]["post"])
 
             subprocess.run([ec_config["text_editor"], correction_file])
-    if(ec_config["request_enter"]):
-        input("Press [Enter] to continue")
+        if(ec_config["request_enter"]):
+            input("Press [Enter] to continue")
 
 
 
-    for tmp in all_files:
-        # print("Returned: " + str(tmp.stdout.readline()))
-        tmp.terminate()
+        for tmp in all_files:
+            # print("Returned: " + str(tmp.stdout.readline()))
+            tmp.terminate()
