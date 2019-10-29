@@ -115,19 +115,8 @@ def validate_config(base, file):
 
 
 #############################################################
-# Parse Command line Arguments
-#############################################################
-
-def parse_yaml(file):
-    """parse_yaml(file: str)
-
-    Arguments:
-        file {str} -- the .yml, .yaml file to parse
-    """
-    global ec_config
-    with open(file,'r') as yaml_file:
-        # FullLoader only available for 5.1 and above:
-        if float(yaml.__version__) >= 5.1:
+g and above:
+        if float(yaml.__version__[:yaml.__version__.rfind(".")]) >= 5.1:
             y_conf = yaml.load(yaml_file, Loader=yaml.FullLoader)
         else:
             y_conf = yaml.load(yaml_file)
