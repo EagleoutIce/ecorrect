@@ -19,8 +19,6 @@
 # furthermore this python-script allows a config file
 # to determine: supported Naming-Schemes,
 # Resolving Partners (if they're not given)
-# You can add a test-suite too to automatically check
-# source code to be: compileabble, hold up to a test-suite,
 # ...
 # The correction template will be set in german
 
@@ -62,6 +60,7 @@ ec_config = {
         #     name: "Name"
         #     tasks: [
         #       <Array of points>
+        #       can contain 'text' field to replace "Teilaufgabe x"
         #     ]
         ],
     "corrector" : "",
@@ -77,13 +76,28 @@ ec_config = {
     "replace_characters" : {# will be replaced when searching for group
         "ß" : "s", "ä" : "ae", "ö" : "oe",
         "ü" : "ue", "á" : "", "é" : ""
-    }
+    },
+    "padding" : 35 # Padding for the names
 }
 
 # We want to check the configuration with the read one,
 # giving nice errors if something fails:
 class ConfigParseError(Exception):
     pass
+
+# Calculates the sum for (possible 'dict') task list
+def magic_sum(arr):
+    csum = 0
+    for i in arr:
+        if type(i) is dict:
+            csum = csum + [*i][0]
+        elif type(i) is int:
+            csum = csum + i
+        else:
+            raise ConfigParseError("Wrong Tasklist!")
+    return csum
+
+
 
 # Validate that the config file contains no unknown key
 def validate_config(base, file):
@@ -113,7 +127,7 @@ def validate_config(base, file):
                 if "tasks" not in block:
                     raise ConfigParseError("The task-block '" + block["name"] + "' has no 'tasks'!")
                 # print("Total points in " + block["name"] + ": " + str(sum(block["tasks"])))
-                block["total"] = sum(block["tasks"])
+                block["total"] = magic_sum(block["tasks"])
         elif key not in base:
             raise ConfigParseError("The Key '" + key + "' is unknown")
 
@@ -135,6 +149,7 @@ def parse_yaml(file):
             y_conf = yaml.load(yaml_file, Loader=yaml.FullLoader)
         else:
             y_conf = yaml.load(yaml_file)
+        # print(y_conf)
         validate_config(ec_config, y_conf)
         ec_config = {**ec_config, **y_conf}
         # print(ec_config)
@@ -148,8 +163,12 @@ def extract_zip(file,path):
         file {str} -- zip file
         path {str} -- extract path
     """
-    with zipfile.ZipFile(file,'r') as zip_fil:
-        zip_fil.extractall(path)
+    try:
+        with zipfile.ZipFile(file,'r') as zip_fil:
+            zip_fil.extractall(path)
+    except:
+        print("\033[31mDas entpacken der Datei: '" + file + '" ist Fehlgeschlagen! Kopiere die Datei nach: "' + path + '"\033m')
+        shutil.copyfile(file,os.path.join(path,os.path.basename(file)))
 
 # First of all: check for an command-line argument:
 
@@ -175,72 +194,80 @@ else:
     print("Please supply a .zip or .yaml-File!")
     sys.exit(1)
 
-# delete working dir:
-if ec_config["clean_dirs"]:
-    if os.path.isdir(ec_config["working_dir"]):
-        shutil.rmtree(ec_config["working_dir"])
-    if os.path.isdir(ec_config["correction_dir"]):
-        shutil.rmtree(ec_config["correction_dir"])
-else:
-    print("Dir-Clean disabled!")
+do_extraction = True
+if os.path.isdir(ec_config["correction_dir"]):
+    print("Information, der Ordner: '" + ec_config["correction_dir"]+ '" existiert bereits! Bestehende Korrektur fortsetzen?')
+    if(input("Bitte gib 'y' ein, wenn du die Korrektur fortführen möchtest> ").lower().startswith("y")):
+        print("Führe Korrektur fort...")
+        do_extraction = False
 
-# print(ec_config)
+if do_extraction:
+    # delete working dir:
+    if ec_config["clean_dirs"]:
+        if os.path.isdir(ec_config["working_dir"]):
+            shutil.rmtree(ec_config["working_dir"])
+        if os.path.isdir(ec_config["correction_dir"]):
+            shutil.rmtree(ec_config["correction_dir"])
+    else:
+        print("Dir-Clean disabled!")
 
-# Zip file to unpack is stored in 'target_zip'
-extract_zip(ec_config["target_zip"],ec_config["working_dir"])
+    # print(ec_config)
 
-# just iters and returns None if none applies
-def check_match(regarray,string):
-    for m in regarray:
-        fmatch = re.search(m, filename, re.IGNORECASE)
-        if fmatch != None:
-            return fmatch
-    return None
+    # Zip file to unpack is stored in 'target_zip'
+    extract_zip(ec_config["target_zip"],ec_config["working_dir"])
 
-# searches for partners
-def get_partner(firstname,lastname):
-    name = firstname + " " + lastname
-    for group in ec_config["partners"]:
-        for member in group["members"]:
-            for repl in ec_config["replace_characters"]:
-                member = member.replace(repl, ec_config["replace_characters"][repl])
-                name = name.replace(repl, ec_config["replace_characters"][repl])
-            if member == name:
-                return group;
-    return None
+    # just iters and returns None if none applies
+    def check_match(regarray,string):
+        for m in regarray:
+            fmatch = re.search(m, filename, re.IGNORECASE)
+            if fmatch != None:
+                return fmatch
+        return None
 
-# Iterate over all file
-for filename in os.listdir(ec_config["working_dir"]):
-        fmatch = check_match(ec_config["name_patterns"], filename)
-        if fmatch != None:
-            # print(fmatch.groupdict())
-            fdict = fmatch.groupdict()
-            #extract to group target
-            group = get_partner(fdict["FirstName"],fdict["LastName"])
-            group_tardir = None
-            if(group == None):
-                # print("\033[32mFor: '" + fdict["FirstName"] + " " + fdict["LastName"] + "' no group was found!\033[0m")
-                group_tardir = os.path.join(ec_config["correction_dir"],fdict["FirstName"] + " " + fdict["LastName"])
+    # searches for partners
+    def get_partner(firstname,lastname):
+        name = firstname + " " + lastname
+        for group in ec_config["partners"]:
+            for member in group["members"]:
+                for repl in ec_config["replace_characters"]:
+                    member = member.replace(repl, ec_config["replace_characters"][repl])
+                    name = name.replace(repl, ec_config["replace_characters"][repl])
+                if member == name:
+                    return group;
+        return None
+
+    # Iterate over all file
+    for filename in os.listdir(ec_config["working_dir"]):
+            fmatch = check_match(ec_config["name_patterns"], filename)
+            if fmatch != None:
+                # print(fmatch.groupdict())
+                fdict = fmatch.groupdict()
+                #extract to group target
+                group = get_partner(fdict["FirstName"],fdict["LastName"])
+                group_tardir = None
+                if(group == None):
+                    # print("\033[32mFor: '" + fdict["FirstName"] + " " + fdict["LastName"] + "' no group was found!\033[0m")
+                    group_tardir = os.path.join(ec_config["correction_dir"],fdict["FirstName"] + " " + fdict["LastName"])
+                else:
+                    # print("\033[32mFor: '" + fdict["FirstName"] + " " + fdict["LastName"] + "' the group: " + group["name"] + " has been identified!\033[0m")
+                    group_tardir = os.path.join(ec_config["correction_dir"],"Group: " + group["name"])
+
+                if os.path.isdir(group_tardir):
+                    # print("The targetfile does exist. Adding the file")
+                    pass
+                else:
+                    # print("The targetfile doesn't exist. Creating...")
+                    os.makedirs(group_tardir)
+
+                filename_fullpath = os.path.join(ec_config["working_dir"],filename)
+                if(fdict["FileExtension"] == "zip"):
+                    extract_zip(filename_fullpath,group_tardir)
+                else:
+                    shutil.copyfile(filename_fullpath,os.path.join(group_tardir,fdict["FileName"] + "." + fdict["FileExtension"]))
             else:
-                # print("\033[32mFor: '" + fdict["FirstName"] + " " + fdict["LastName"] + "' the group: " + group["name"] + " has been identified!\033[0m")
-                group_tardir = os.path.join(ec_config["correction_dir"],"Group: " + group["name"])
+                print("The File '" + filename + "' does not satisfy any pattern in 'name_patterns'!")
 
-            if os.path.isdir(group_tardir):
-               # print("The targetfile does exist. Adding the file")
-               pass
-            else:
-               # print("The targetfile doesn't exist. Creating...")
-               os.makedirs(group_tardir)
-
-            filename_fullpath = os.path.join(ec_config["working_dir"],filename)
-            if(fdict["FileExtension"] == "zip"):
-                extract_zip(filename_fullpath,group_tardir)
-            else:
-                shutil.copyfile(filename_fullpath,os.path.join(group_tardir,fdict["FileName"] + "." + fdict["FileExtension"]))
-        else:
-            print("The File '" + filename + "' does not satisfy any pattern in 'name_patterns'!")
-
-# No everybody has a folder let's traverse
+# Now, everybody has a folder let's traverse
 # checks for file of interest
 def is_of_interest(tar,pattern):
     for file in glob.glob(os.path.join(tar,pattern),recursive=True):
@@ -302,7 +329,11 @@ if(ec_config["quick_correction"]):
                         sub_task_letter = 'a'
                         if(len(block["tasks"])>1):
                             for task in block["tasks"]:
-                                correction.write("  - Teilaufgabe " + sub_task_letter + ")   (x/" + str(task) + " " + ("Punkt" if task==1 else "Punkte") + ")\n\n")
+                                if type(task) is dict:
+                                    i = [*task][0]
+                                    correction.write("  - "  + task[i].ljust(int(ec_config["padding"])) + "   (x/" + str(i) + " " + ("Punkt" if i==1 else "Punkte") + ")\n\n")
+                                else:
+                                    correction.write("  - Teilaufgabe " + sub_task_letter + ")  " + " ".ljust(int(ec_config["padding"])-13) + " (x/" + str(task) + " " + ("Punkt" if task==1 else "Punkte") + ")\n\n")
                                 sub_task_letter = chr(ord(sub_task_letter) + 1)
                                 correction.write(ec_config["correction_template"]["mid-sub"] + "\n")
                         else:

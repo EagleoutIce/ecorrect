@@ -1,12 +1,10 @@
 ## configuration file for 'ecorrect' (.py)
 
-## If this file is named 'ecorrect.yml', it will be loaded automatically
-## if located in the same folder.
-## Otherwise you can just set:
-
 ## Please type your name here
 corrector : "Mister Critical"
 
+## If this file is named 'ecorrect.yml', it will be loaded automatically
+## if located in the same folder, otherwise you can just set:
 # target_zip : "CS1000.010-WS19-Abgabe_Uebungsblatt_0-Fr_12-14_O27_-_2202-163966.zip"
 
 ## Path to unpack the zip:
@@ -17,7 +15,7 @@ corrector : "Mister Critical"
 ## If you want to keep the folders:
 # clean_dirs : no
 
-## you can set your preferred text editors for specific file-types
+## you can set your preferred viewer for specific file-types
 # viewers :
 #    pdf: "okular"
 #    java : "code"
@@ -44,8 +42,12 @@ sheet_data:
   - name: "Aufgabe 2: Operation: Waffel"
     tasks:
       - 9
-      - 42
+      - 42 : "So heißt die Aufgabe "
       - -7
+
+## If you want another padding for the subtasks, type (400 = 400 whitespaces, this should be way too large :P):
+# padding = 400
+
 
 ## name_patterns :
 ## - "Abgabe_Uebungsblatt_(?P<Number>\d+)--(?P<WeekDay>Mo|Di|Mi|Do|Fr|Sa|So)_(?P<StartTime>\d+)-(?P<EndTime>\d+)_(?P<Where>[A-Za-z0-9]*)_-_(?P<WhereRoom>[A-Za-z0-9]*)--(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)_(?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)--(?P<FileName>[a-zäöüÄÖÜß0-9 _\-]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)"
