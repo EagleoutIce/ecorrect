@@ -53,7 +53,7 @@ ec_config = {
     "text_editor" : "code",
     "files_of_interest" : ["**/*.pdf","**/*.java"], # List of 'glob' patterns
     "quick_correction" : True,
-    "clean_dirs" : True,
+    "clean_dirs" : False,
     "sheet_data" : [
         # Data should be like this:
         # {

@@ -12,8 +12,8 @@ corrector : "Mister Critical"
 
 ## this path holds the correction if 'clean_dirs' is set, they will be deleted before each launch
 # correction_dir : "./Abgaben"
-## If you want to keep the folders:
-# clean_dirs : no
+## If you do not want to keep the folders:
+# clean_dirs : yes
 
 ## you can set your preferred viewer for specific file-types
 # viewers :
