@@ -195,9 +195,11 @@ else:
     sys.exit(1)
 
 do_extraction = True
+filter_start = ""
 if os.path.isdir(ec_config["correction_dir"]):
     print("Information, der Ordner: '" + ec_config["correction_dir"]+ '" existiert bereits! Bestehende Korrektur fortsetzen?')
     if(input("Bitte gib 'y' ein, wenn du die Korrektur fortführen möchtest> ").lower().startswith("y")):
+        filter_start = input("Bitte gib den (Gruppen-)Namen ein, bei du die Korrektur fortführen möchtest> ")
         print("Führe Korrektur fort...")
         do_extraction = False
 
@@ -294,6 +296,12 @@ def decode_by_groupname(groupname):
 
 if(ec_config["quick_correction"]):
     for dirname in sorted(os.listdir(ec_config["correction_dir"])):
+        group_name = decode_by_groupname(dirname)
+        if filter_start != "":
+            if not (filter_start in group_name or filter_start in dirname):
+                continue
+            else:
+                filter_start = ""
         print("\033[34mShowing Data for: '" + dirname + "'\033[0m")
         # iterate over all files of interest
         tar_grouppath = os.path.join(ec_config["correction_dir"],dirname)
@@ -310,7 +318,7 @@ if(ec_config["quick_correction"]):
                 print("Create File...")
                 with open(correction_file,'w') as correction:
                     correction.write(ec_config["correction_template"]["pre"])
-                    correction.write("Korrektur für: " + decode_by_groupname(dirname)+"\n")
+                    correction.write("Korrektur für: " + group_name +"\n")
                     correction.write(ec_config["correction_template"]["in"] + "\n")
                     correction.write(ec_config["correction_template"]["out"] + "\n" + ec_config["corrector"]+"\n")
                     correction.write(ec_config["correction_template"]["post"])
@@ -322,7 +330,7 @@ if(ec_config["quick_correction"]):
                 print("Create File...")
                 with open(correction_file,'w') as correction:
                     correction.write(ec_config["correction_template"]["pre"])
-                    correction.write("Korrektur für: " + decode_by_groupname(dirname)+"\n\n")
+                    correction.write("Korrektur für: " + group_name + "\n\n")
                     correction.write(ec_config["correction_template"]["in"] + "\n")
                     for block in ec_config["sheet_data"]:
                         correction.write(block["name"] + "   x/" + str(block["total"]) + " " + ("Punkt" if block["total"]==1 else "Punkte") + "\n")
