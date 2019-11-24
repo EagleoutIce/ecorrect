@@ -272,13 +272,14 @@ if do_extraction:
 # Now, everybody has a folder let's traverse
 # checks for file of interest
 def is_of_interest(tar,pattern):
+    files_of_interest = []
     for file in glob.glob(os.path.join(tar,pattern),recursive=True):
         for viewer in ec_config["viewers"]:
             if(file.endswith(viewer)):
                 print("\033[33mShowing '" + file + "' with: " + viewer+ "(" + ec_config["viewers"][viewer] + ")\033[m")
-                return subprocess.Popen([ec_config["viewers"][viewer], file])#,stdout=subprocess.PIPE)
+                files_of_interest.append(subprocess.Popen([ec_config["viewers"][viewer], file]))#,stdout=subprocess.PIPE)
                 # all_files.append(subprocess.Popen([ec_config["viewers"][viewer], file]))
-    # return all_files
+    return files_of_interest
 #iters over group, returns list:
 def decode_by_groupname(groupname):
     if groupname.startswith("Group: "):
@@ -307,9 +308,8 @@ if(ec_config["quick_correction"]):
         tar_grouppath = os.path.join(ec_config["correction_dir"],dirname)
         all_files = []
         for pattern in ec_config["files_of_interest"]:
-            open_file = is_of_interest(tar_grouppath,pattern)
-            if open_file != None:
-                all_files.append(open_file)
+            open_files = is_of_interest(tar_grouppath,pattern)
+            all_files += open_files
         correction_file = os.path.join(tar_grouppath,"korrektur-" + dirname.replace("Group: ","").replace(" ","_") + ".txt") # replace is sloppy
         if(len(ec_config["sheet_data"]) == 0):
             if(ec_config["request_enter"]):
