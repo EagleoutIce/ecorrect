@@ -205,9 +205,9 @@ if os.path.isdir(ec_config["correction_dir"]):
 
 if do_extraction:
     # delete working dir:
+    if os.path.isdir(ec_config["working_dir"]):
+        shutil.rmtree(ec_config["working_dir"])
     if ec_config["clean_dirs"]:
-        if os.path.isdir(ec_config["working_dir"]):
-            shutil.rmtree(ec_config["working_dir"])
         if os.path.isdir(ec_config["correction_dir"]):
             shutil.rmtree(ec_config["correction_dir"])
     else:
@@ -333,7 +333,7 @@ if(ec_config["quick_correction"]):
                     correction.write("Korrektur für: " + group_name + "\n\n")
                     correction.write(ec_config["correction_template"]["in"] + "\n")
                     for block in ec_config["sheet_data"]:
-                        correction.write(block["name"] + "   x/" + str(block["total"]) + " " + ("Punkt" if block["total"]==1 else "Punkte") + "\n")
+                        correction.write(block["name"].ljust(int(ec_config["padding"])) + "   x/" + str(block["total"]) + " " + ("Punkt" if block["total"]==1 else "Punkte") + "\n")
                         sub_task_letter = 'a'
                         if(len(block["tasks"])>1):
                             for task in block["tasks"]:
