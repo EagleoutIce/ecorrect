@@ -187,7 +187,7 @@ def decode_by_groupname(groupname):
     if groupname.startswith("Group: "):
         groupname = groupname[7:] # len("Group: ") = 7
     else:
-        return groupname;
+        return groupname
     for group in ec_config["partners"]:
        if group["name"] == groupname:
             members = group["members"]
@@ -225,7 +225,7 @@ def get_partner(firstname,lastname):
                 member = member.replace(repl, ec_config["replace_characters"][repl])
                 name = name.replace(repl, ec_config["replace_characters"][repl])
             if member == name:
-                return group;
+                return group
     return None
 
 #

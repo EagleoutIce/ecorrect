@@ -25,7 +25,6 @@ r_task_start = r"^(?P<title>.*)\s*[^(0-9](?P<got_pts>\d+)\/(?P<max_pts>\d+)\sPun
 ## Beginn einer Unteraufgabe:
 r_subtask_start = r"^\s-\s(\w+)\)\s(?P<title>.*)\((?P<got_pts>\d+)\/(?P<max_pts>\d+)\)$"
 
-
 def getNum(a):
     a = str(a) # ensure string to not cut off floats 
     try: 
@@ -56,6 +55,14 @@ class TextScrollCombo(tk.Frame):
         # scrollb = ttk.Scrollbar(self, command=self.txt.yview)
         # scrollb.grid(row=0, column=1, sticky='nsew')
         # self.txt['yscrollcommand'] = scrollb.set
+
+
+    def Tset(self, a):
+        self.txt.delete('1.0', 'end')
+        self.txt.insert('1.0', a)
+        self.txt.update()
+
+
 
 class ScrolledWindow(tk.Frame):
     """
@@ -168,6 +175,8 @@ class StdoutRedirector(object):
         self.text_space.see('end')
         self.text_space.config(state='disabled')
 
+
+
 class SubTaskBlock():
     """ Sub Task Block"""
     def __init__(self, master, master_points, number : int, name : str, points : int):
@@ -193,11 +202,20 @@ class SubTaskBlock():
         self.correction_tsc = TextScrollCombo(self.master, height=100)
         self.correction_tsc.grid(row=self.sub_task_number+1, column=0, columnspan=4, padx=2, pady=7, sticky='nsew')
 
+
+    def Tset(self, a):
+        self.correction_tsc.txt.delete('1.0', 'end')
+        self.correction_tsc.txt.insert('1.0', a)
+        self.correction_tsc.txt.update()
+
+
     def Xset(self, a):
         """set points without trace"""
         self.points.trace_remove('write', self.tcb)
         self.points.set(a)
+        self.sub_task_old_points = getNum(a)
         self.tcb = self.points.trace_add('write', self.points_validation)
+
 
     def points_validation(self, a, b, c):
         val = getNum(self.points.get())
@@ -235,7 +253,7 @@ class TaskBlock():
         lb_total_points = tk.Entry(self.mf,width=4,textvariable=self.total_points,justify='right',disabledbackground='white',background='white',foreground='DeepPink3', disabledforeground='DeepPink3')
         lb_total_points.grid(column=2,row=0, sticky='nsew')
 
-        self.total_points.trace('w', self.points_validation)
+        self.tcb = self.total_points.trace('w', self.points_validation)
 
         self.lb_tp = tk.Label(self.mf, text="/" + str(self.task_points))
         self.lb_tp.grid(column=3,row=0, sticky='nsew',padx=4)
@@ -260,6 +278,20 @@ class TaskBlock():
 
             lb_total_points.config(state=tk.DISABLED)
 
+
+    def Tset(self, a):
+        self.correction_tsc.txt.delete('1.0', 'end')
+        self.correction_tsc.txt.insert('1.0', a)
+        self.correction_tsc.txt.update()
+
+
+    def Xset(self, a):
+        """set points without trace"""
+        self.total_points.trace_remove('write', self.tcb)
+        self.total_points.set(a)
+        self.tcb = self.total_points.trace_add('write', self.points_validation)
+
+
     def points_validation(self, a, b, c):
         try: 
             val = float(self.total_points.get())
@@ -272,6 +304,7 @@ class TaskBlock():
 
         except ValueError as err:
             print(err)
+
 
     def grid(self, **options):
         self.mf.grid(sticky='nsew')
@@ -429,11 +462,13 @@ class EcorrectGui():
         self.t1_bt_frame = tk.Frame(self.t1_sheets)
         self.t1_bt_frame.grid(column=1, row=4, sticky='nsew', padx=10, pady=10)
 
-        self.t1_bt_correct = tk.Button(self.t1_bt_frame, text="Starte Korrektur", state=tk.DISABLED, command=self.t1_start_correction)
-        self.t1_bt_correct.pack(expand=True, fill='both', side='left',padx=2)
-        self.t1_bt_save = tk.Button(self.t1_bt_frame, text="Speichere Korrektur", state=tk.DISABLED, command=self.t1_save_correction)
+        self.t1_bt_correct_start = tk.Button(self.t1_bt_frame, text="Öffne Dateien", state=tk.DISABLED, command=self.t1_start_correction)
+        self.t1_bt_correct_start.pack(expand=True, fill='both', side='left',padx=2)
+        self.t1_bt_correct_open = tk.Button(self.t1_bt_frame, text="Schließe Dateien", state=tk.NORMAL, command=self.t1_close_open_files)
+        self.t1_bt_correct_open.pack(expand=True, fill='both', side='left',padx=2)
+        self.t1_bt_save = tk.Button(self.t1_bt_frame, text="Speichere Korrektur", state=tk.DISABLED, command=self.t1_save_correction, relief='groove')
         self.t1_bt_save.pack(expand=True, fill='both', side='left',padx=2)
-
+        self.all_files = []
 
     def _create_notebook(self):
         self.notebook = ttk.Notebook(self.mw)
@@ -459,8 +494,10 @@ class EcorrectGui():
             sel_index = self.t1_tv.parent(sel_index)
         if self.t1_tv.item(sel_index)['text'] == self.r_curgroup:
             return # bereits ausgewählt
-        # This should only retrigger if it is a root-element
-        # print("Selected: " + sel_index + " (" + self.t1_tv.item(sel_index)['text'] + ")")
+
+        # JMP HERE
+            
+        # print("selected: " + sel_index + " (" + self.t1_tv.item(sel_index)['text'] + ")")
         # TODO: use item selection to allow preload of files, than add correction button
         #       on press, files shall be opened, below there shall be a Text-Box (maybe /w Field generation to enter the Data?)
         self.t1_s_name.config(text="Name: " + self.t1_tv.item(sel_index)['text'])
@@ -468,11 +505,11 @@ class EcorrectGui():
         self.r_curgroup = self.t1_tv.item(sel_index)['text']
 
         if self.r_curgroup == '':
-            self.t1_bt_correct.config(state=tk.DISABLED)
+            self.t1_bt_correct_start.config(state=tk.DISABLED)
             self.t1_bt_save.config(state=tk.DISABLED)
             # self.t1_s_f.config(state=tk.DISABLED)
         else:
-            self.t1_bt_correct.config(state=tk.NORMAL)
+            self.t1_bt_correct_start.config(state=tk.NORMAL)
             self.t1_bt_save.config(state=tk.NORMAL)
             # self.t1_s_f.config(state=tk.NORMAL)
 
@@ -517,25 +554,22 @@ class EcorrectGui():
                         if m_t: # task
                             i_task_counter += 1
                             if b_mode_intro: # stash old intro-line
-                                self.t1_intro_box.txt.delete('1.0', 'end')
-                                self.t1_intro_box.txt.insert('1.0', free_text(cache))
+                                self.t1_intro_box.Tset(free_text(cache))
                                 cache = []
                                 b_mode_intro = False
                             if b_mode_task_intro: # stash task lines
                                 # as we have to access the last block, we will decrement
-                                self.t1_taskblocks[i_task_counter-1].correction_tsc.txt.delete('1.0', 'end')
-                                self.t1_taskblocks[i_task_counter-1].correction_tsc.txt.insert('1.0', free_text(cache))
+                                self.t1_taskblocks[i_task_counter-1].Tset(free_text(cache))
                                 cache = []
                                 b_mode_task_intro = False # just to be consistent :D
                             if b_mode_subtask_intro: # stash subtask lines
-                                self.t1_taskblocks[i_task_counter-1].subtasks[i_subtask_counter].correction_tsc.txt.delete('1.0', 'end')
-                                self.t1_taskblocks[i_task_counter-1].subtasks[i_subtask_counter].correction_tsc.txt.insert('1.0', free_text(cache))
+                                self.t1_taskblocks[i_task_counter-1].subtasks[i_subtask_counter].Tset(free_text(cache))
                                 cache = []
                                 b_mode_subtask_intro = False
 
                             # print("Is Task-Line")
                             pts = m_t.group("got_pts")
-                            self.t1_taskblocks[i_task_counter].total_points.set(pts)
+                            self.t1_taskblocks[i_task_counter].Xset(pts)
 
                             b_mode_task_intro = True # Collect intro for Task, this is, if there is no subtasks, the collection of the main block
                             i_subtask_counter = -1 # reset
@@ -546,13 +580,11 @@ class EcorrectGui():
 
                             if b_mode_task_intro: # stash task lines
                                 # as we have to access the last block, we will decrement
-                                self.t1_taskblocks[i_task_counter].correction_tsc.txt.delete('1.0', 'end')
-                                self.t1_taskblocks[i_task_counter].correction_tsc.txt.insert('1.0', free_text(cache))
+                                self.t1_taskblocks[i_task_counter].Tset(free_text(cache))
                                 cache = []
                                 b_mode_task_intro = False # just to be consistent :D
                             elif b_mode_subtask_intro: # stash subtask lines
-                                self.t1_taskblocks[i_task_counter].subtasks[i_subtask_counter-1].correction_tsc.txt.delete('1.0', 'end')
-                                self.t1_taskblocks[i_task_counter].subtasks[i_subtask_counter-1].correction_tsc.txt.insert('1.0', free_text(cache))
+                                self.t1_taskblocks[i_task_counter].subtasks[i_subtask_counter-1].Tset(free_text(cache))
                                 cache = []
                                 b_mode_subtask_intro = False
 
@@ -570,6 +602,7 @@ class EcorrectGui():
                 # cleanse indention mismatch to purge author
                 dcache = []
                 for dc in cache:
+                    # print("'" + dc + "' " + str(len(dc) - len(dc.lstrip())))
                     if len(dc) - len(dc.lstrip()) > 0:
                         dcache.append(dc)
 
@@ -580,16 +613,14 @@ class EcorrectGui():
                     b_mode_intro = False
                 if b_mode_task_intro: # stash task lines
                     # as we have to access the last block, we will decrement
-                    self.t1_taskblocks[i_task_counter].correction_tsc.txt.delete('1.0', 'end')
-                    self.t1_taskblocks[i_task_counter].correction_tsc.txt.insert('1.0', free_text(dcache))
+                    self.t1_taskblocks[i_task_counter].Tset(free_text(dcache))
                     dcache = []
                     b_mode_task_intro = False # just to be consistent :D
                 if b_mode_subtask_intro: # stash subtask lines
-                    self.t1_taskblocks[i_task_counter].subtasks[i_subtask_counter].correction_tsc.txt.delete('1.0', 'end')
-                    self.t1_taskblocks[i_task_counter].subtasks[i_subtask_counter].correction_tsc.txt.insert('1.0', free_text(dcache))
+                    self.t1_taskblocks[i_task_counter].subtasks[i_subtask_counter].Tset(free_text(dcache))
                     dcache = []
                     b_mode_subtask_intro = False
-            pass
+
 
     def e_load_config(self):
         """ Goal is to get the Name of the target Configuration-File """
@@ -658,15 +689,31 @@ class EcorrectGui():
             print ("Loading (zip): " + filename)
             ecorrect.ec_config["target_zip"] = filename
             if os.path.isfile(filename):
+                if tkmb.askyesno("Korrektur starten?", "Soll die Korrektur gestartet werden?"):
+                    self.e_start_working()
                 self.menu.entryconfigure(1, state=tk.NORMAL)
             else: 
                 self.menu.entryconfigure(1, state=tk.DISABLED)
 
             self.e_load_ec_config()
+
         return filename
 
     def t1_start_correction(self):
         print("Started Correction")
+
+        tar_grouppath = os.path.join(ecorrect.ec_config["correction_dir"],self.r_curgroup)
+
+        for pattern in ecorrect.ec_config["files_of_interest"]:
+            open_files = ecorrect.is_of_interest(tar_grouppath,pattern)
+            self.all_files += open_files
+
+    def t1_close_open_files(self): 
+        for tmp in self.all_files:
+            # print("Returned: " + str(tmp.stdout.readline()))
+            tmp.terminate()
+        self.all_files = []
+
     # 
     # ╔╦╗┌─┐┬┌┐┌  ╔═╗─┐ ┬┌┬┐┌─┐┌─┐┌┬┐┬┌─┐┌┐┌
     # ║║║├─┤││││  ║╣ ┌┴┬┘ │ ├─┤│   │ ││ ││││
@@ -762,6 +809,12 @@ class EcorrectGui():
 
         correction_file = os.path.join(tar_grouppath, getGroupTag(self.r_curgroup)) # replace is sloppy
 
+        with open(correction_file,'w') as correction:
+            self.createSave(correction, group_name)
+            
+            
+        
+    def createSave(self, correction, group_name):
         # Calculate Total Points:
         total_sum = 0
         max_sum = 0
@@ -769,34 +822,36 @@ class EcorrectGui():
             total_sum += getNum(tb.total_points.get())
             max_sum += getNum(tb.task_points)
         # print(total_sum,"/",max_sum)
+       
+       
         def print_if_ne(c, a):
-            if a != "":
-                c.write(a + "\n")
+                if a != "":
+                    c.write(a + "\n")   
 
-        with open(correction_file,'w') as correction:
-            print_if_ne(correction, ecorrect.ec_config["correction_template"]["pre"])
-            correction.write("Korrektur für: " + group_name + "\n\n")
-            correction.write("> Gesamtpunktzahl: " + str(total_sum) + "/" + str(max_sum) + " " + ("(bestanden)" if total_sum/max_sum >= ecorrect.ec_config['min_percentage'] else "(nicht bestanden)") + "\n\n")
-            print_if_ne(correction, self.t1_intro_box.txt.get(1.0, 'end'))
-            print_if_ne(correction, ecorrect.ec_config["correction_template"]["in"])
-            for block in self.t1_taskblocks:#  ecorrect.ec_config["sheet_data"]:
-                correction.write(block.task_name.ljust(int(ecorrect.ec_config["padding"]-6)) + str(getNum(block.total_points.get())).rjust(4) + "/" + str(block.task_points) + " " + ("Punkt" if block.task_points ==1 else "Punkte") + "\n")
-                sub_task_letter = 'a'
-                # main text here
-                for line in block.correction_tsc.txt.get(1.0,'end').split('\n'):
-                    correction.write("   " + line + "\n") # add padding
-                if(len(block.subtasks)>1):
-                    for task in block.subtasks:
-                        correction.write(" - " + task.sub_task_name.ljust(int(ecorrect.ec_config["padding"])-13) + str(" (" + str(getNum(task.points.get()))).rjust(8) + "/" + str(getNum(task.sub_task_points)) + ")\n")
-                        sub_task_letter = chr(ord(sub_task_letter) + 1)
-                        print_if_ne(correction, ecorrect.ec_config["correction_template"]["mid-sub"])
-                        for line in task.correction_tsc.txt.get(1.0,'end').split('\n'):
-                            correction.write("     " + line + "\n") # add padding
-                print_if_ne(correction, ecorrect.ec_config["correction_template"]["mid"])
-            print_if_ne(correction, ecorrect.ec_config["correction_template"]["out"])
-            correction.write(ecorrect.ec_config["corrector"]+"\n")
-            print_if_ne(correction, ecorrect.ec_config["correction_template"]["post"])
-            
+
+        print_if_ne(correction, ecorrect.ec_config["correction_template"]["pre"])
+        correction.write("Korrektur für: " + group_name + "\n\n")
+        correction.write("> Gesamtpunktzahl: " + str(total_sum) + "/" + str(max_sum) + " " + ("(bestanden)" if total_sum/max_sum >= ecorrect.ec_config['min_percentage'] else "(nicht bestanden)") + "\n\n")
+        print_if_ne(correction, self.t1_intro_box.txt.get(1.0, 'end'))
+        print_if_ne(correction, ecorrect.ec_config["correction_template"]["in"])
+        for block in self.t1_taskblocks:#  ecorrect.ec_config["sheet_data"]:
+            correction.write(block.task_name.ljust(int(ecorrect.ec_config["padding"]-6)) + str(getNum(block.total_points.get())).rjust(4) + "/" + str(block.task_points) + " " + ("Punkt" if block.task_points ==1 else "Punkte") + "\n")
+            sub_task_letter = 'a'
+            # main text here
+            for line in block.correction_tsc.txt.get(1.0,'end').split('\n'):
+                correction.write("   " + line + "\n") # add padding
+            if(len(block.subtasks)>1):
+                for task in block.subtasks:
+                    correction.write(" - " + task.sub_task_name.ljust(int(ecorrect.ec_config["padding"])-13) + str(" (" + str(getNum(task.points.get()))).rjust(8) + "/" + str(getNum(task.sub_task_points)) + ")\n")
+                    sub_task_letter = chr(ord(sub_task_letter) + 1)
+                    print_if_ne(correction, ecorrect.ec_config["correction_template"]["mid-sub"])
+                    for line in task.correction_tsc.txt.get(1.0,'end').split('\n'):
+                        correction.write("     " + line + "\n") # add padding
+            print_if_ne(correction, ecorrect.ec_config["correction_template"]["mid"])
+        print_if_ne(correction, ecorrect.ec_config["correction_template"]["out"])
+        correction.write(ecorrect.ec_config["corrector"]+"\n")
+        print_if_ne(correction, ecorrect.ec_config["correction_template"]["post"])
+
 def helper_concat_members(mls):
     if(len(mls) == 2):
         return mls[0] + " und " + mls[1]
@@ -819,3 +874,5 @@ def helper_concat_members(mls):
 if __name__ == "__main__":
     gui = EcorrectGui()
     gui.show()
+
+# TODO: Open Files on start correction and close olds on repress
