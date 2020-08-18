@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Note: python >= 3.5
 
-## ecorrect.py v1.0 automate excercise - corrections
+# ecorrect.py v1.1 automate excercise - corrections
 ##
-## 28.10.2019 Florian Sihler
+# 18.08.2020 Florian Sihler
 
 # this Code was written in ~2-3 hours, please be kind with me ^^
 
@@ -23,40 +23,42 @@
 # The correction template will be set in german
 
 
-import sys # cmd line args
-import yaml # Parse config file
-import re # matching files
-import zipfile # extracting zips
-import os # list directory
-import shutil # clean working dir
-import subprocess # to call viewer
-import glob # glob :P
+import sys  # cmd line args
+import yaml  # Parse config file
+import re  # matching files
+import zipfile  # extracting zips
+import os  # list directory
+import shutil  # clean working dir
+import subprocess  # to call viewer
+import glob  # glob :P
 # TODO: to make it possible to check java-files make:
 #       a "files_to_check"-List
+
+GROUP_TXT = "Group: "
 
 #############################################################
 # The default configuration:
 #############################################################
 
 ec_config = {
-    "target_zip" : "", # unknown
-    "working_dir" : "/tmp/zip_tmp",
-    "correction_dir" : "./Abgaben", # maybe change? => make it relative to .zip-file?
-    "name_patterns" : [ # all being case insensitive
+    "target_zip": "",  # unknown
+    "working_dir": "/tmp/zip_tmp",
+    "correction_dir": "./Abgaben",  # maybe change? => make it relative to .zip-file?
+    "name_patterns": [  # all being case insensitive
         "Abgabe_Uebungsblatt_(?P<Number>\d+)--(?P<WeekDay>Mo|Di|Mi|Do|Fr|Sa|So)_(?P<StartTime>\d+)-(?P<EndTime>\d+)_(?P<Where>[A-Za-z0-9]*)_-_(?P<WhereRoom>[A-Za-z0-9]*)--(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)_(?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)--(?P<FileName>[a-zäöüÄÖÜß0-9 _\-]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)",
         "(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)[ _](?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)_(\d+)_assignsubmission_file_(?P<FileName>[a-zA-ZäöüÄÖÜÜß0-9 _\-\[\]()]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)",
         "Abgabe_Uebungsblatt_(?P<Number>\d+)--(?P<WeekDay>Mo|Di|Mi|Do|Fr|Sa|So)_(?P<StartTime>\d+)-(?P<EndTime>\d+)_(?P<Where>[A-Za-z0-9]*)--(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)(_(?P<MiddleName>.*))*_(?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)--(?P<FileName>[a-zA-ZäöüÄÖÜß0-9 _\-]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)"
-      ],
-    "partners" : [],
-    "viewers" : {
-        "pdf" : "okular",
-        "java" : "code"
+    ],
+    "partners": [],
+    "viewers": {
+        "pdf": "okular",
+        "java": "code"
     },
-    "text_editor" : "code",
-    "files_of_interest" : ["**/*.pdf","**/*.java"], # List of 'glob' patterns
-    "quick_correction" : True,
-    "clean_dirs" : False,
-    "sheet_data" : [
+    "text_editor": "code",
+    "files_of_interest": ["**/*.pdf", "**/*.java"],  # List of 'glob' patterns
+    "quick_correction": True,
+    "clean_dirs": False,
+    "sheet_data": [
         # Data should be like this:
         # {
         #     name: "Name"
@@ -64,46 +66,92 @@ ec_config = {
         #       <Array of points>
         #       can contain 'text' field to replace "Teilaufgabe x"
         #     ]
-        ],
-    "corrector" : "",
-    "correction_template" : {
-        "pre" : "", # Text before the template, no newline
-        "in" : "", # Text after the Names
-        "mid" : "", # Text between & after exercises
-        "mid-sub" : "", # Text between & after subtasks
-        "out" : "", # Text after task-block
-        "post" : "" # Text after template, no newline
+    ],
+    "corrector": "",
+    "correction_template": {
+        "pre": "",  # Text before the template, no newline
+        "in": "",  # Text after the Names
+        "mid": "",  # Text between & after exercises
+        "mid-sub": "",  # Text between & after subtasks
+        "out": "",  # Text after task-block
+        "post": ""  # Text after template, no newline
     },
-    "request_enter" : True,
-    "replace_characters" : {# will be replaced when searching for group
-        "ß" : "s", "ä" : "ae", "ö" : "oe",
-        "ü" : "ue", "á" : "", "é" : ""
+    "request_enter": True,
+    "replace_characters": {  # will be replaced when searching for group
+        "ß": "s", "ä": "ae", "ö": "oe",
+        "ü": "ue", "á": "", "é": ""
     },
-    "padding" : 35, # Padding for the names
-    "min_percentage" : 0.5 # Prozentzahl an Punkten die zum Bestehen nötig sind, hier bisher nicht verwendet
+    "padding": 35,  # Padding for the names
+    # Prozentzahl an Punkten die zum Bestehen nötig sind, hier bisher nicht verwendet
+    "min_percentage": 0.5
 }
 
 # We want to check the configuration with the read one,
 # giving nice errors if something fails:
+
+
 class ConfigParseError(Exception):
     pass
 
 # Calculates the sum for (possible 'dict') task list
-def magic_sum(arr):
-    csum = 0
+
+
+def calculate_sum_for_tasklist(arr):
+    calculated_sum = 0
     for i in arr:
         if type(i) is dict:
-            csum = csum + [*i][0]
+            # Here we assume that the task has a string attached, we ignore the string/description
+            calculated_sum = calculated_sum + [*i][0]
         elif type(i) is int:
-            csum = csum + i
+            calculated_sum = calculated_sum + i
         else:
             raise ConfigParseError("Wrong Tasklist!")
-    return csum
+    return calculated_sum
 
 
+def validate_partners_in_group(file: dict, group_count: int):
+    """Tries to validate the supplied groups. It will check the contained groups for validity
+
+    Arguments:
+        file        {dict} -- the config read by the file
+        group_count {int}  -- the current amount of groups that has been read before
+    """
+    for group in file["partners"]:
+        group_count += 1
+        if "name" not in group:
+            print("\033[31mWarning: Group" +
+                  str(group_count) + " has no name!\033[m")
+            group["name"] = "Group" + str(group_count)
+        if "members" not in group:
+            raise ConfigParseError(
+                "The 'partners'-group '" + group["name"] + "' has no 'members'!")
+    return group_count
+
+
+def validate_sheet_data(file: dict, task_count: int):
+    """Tries to validate the sheet data. It will check the contained tasks for validity
+
+    Arguments:
+        file       {dict} -- the config read by the file
+        task_count {int}  -- the current amount of task that has been read before
+    """
+    for block in file["sheet_data"]:
+        task_count += 1
+        if "name" not in block:
+            print("\033[31mWarning: Aufgabe " +
+                  str(task_count) + " has no name!\033[m")
+            block["name"] = "Aufgabe " + str(task_count)
+        if "tasks" not in block:
+            raise ConfigParseError(
+                "The task-block '" + block["name"] + "' has no 'tasks'!")
+        # print("Total points in " + block["name"] + ": " + str(sum(block["tasks"])))
+        block["total"] = calculate_sum_for_tasklist(block["tasks"])
+    return task_count
 
 # Validate that the config file contains no unknown key
-def validate_config(base, file):
+
+
+def validate_config(base: dict, file: dict):
     """Tries to vaildate the configfile against the default config
 
     Arguments:
@@ -113,24 +161,12 @@ def validate_config(base, file):
     group_count = 0
     task_count = 0
     for key in file:
-        if key == "partners": # check for member and name
-            for group in file["partners"]:
-                group_count += 1
-                if "name" not in group:
-                    print("\033[31mWarning: Group" + str(group_count) + " has no name!\033[m");
-                    group["name"] = "Group" + str(group_count)
-                if "members" not in group:
-                    raise ConfigParseError("The 'partners'-group '" + group["name"] + "' has no 'members'!")
-        elif key == "sheet_data": # validate sheet-data
-            for block in file["sheet_data"]:
-                task_count += 1
-                if "name" not in block:
-                    print("\033[31mWarning: Aufgabe " + str(task_count) + " has no name!\033[m");
-                    block["name"] = "Aufgabe " + str(task_count)
-                if "tasks" not in block:
-                    raise ConfigParseError("The task-block '" + block["name"] + "' has no 'tasks'!")
-                # print("Total points in " + block["name"] + ": " + str(sum(block["tasks"])))
-                block["total"] = magic_sum(block["tasks"])
+        if key == "partners":  # check for member and name
+            group_count = validate_partners_in_group(
+                file, group_count)  # should only be called once
+
+        elif key == "sheet_data":  # validate sheet-data
+            task_count = validate_sheet_data(file, task_count)
         elif key not in base:
             raise ConfigParseError("The Key '" + key + "' is unknown")
 
@@ -146,7 +182,7 @@ def parse_yaml(file):
         file {str} -- the .yml, .yaml file to parse
     """
     global ec_config
-    with open(file,'r') as yaml_file:
+    with open(file, 'r') as yaml_file:
         # FullLoader only available for 5.1 and above:
         if float(yaml.__version__[:yaml.__version__.rfind(".")]) >= 5.1:
             y_conf = yaml.load(yaml_file, Loader=yaml.FullLoader)
@@ -159,7 +195,8 @@ def parse_yaml(file):
 
 # extract zipfile
 
-def extract_zip(file,path):
+
+def extract_zip(file, path):
     """Extracts the zipfile to the target path
 
     Arguments:
@@ -167,31 +204,39 @@ def extract_zip(file,path):
         path {str} -- extract path
     """
     try:
-        with zipfile.ZipFile(file,'r') as zip_fil:
-            zip_fil.extractall(path)
+        with zipfile.ZipFile(file, 'r') as zip_file:
+            zip_file.extractall(path)
     except:
-        print("\033[31mDas entpacken der Datei: '" + file + '" ist Fehlgeschlagen! Kopiere die Datei nach: "' + path + '"\033m')
-        shutil.copyfile(file,os.path.join(path,os.path.basename(file)))
+        print("\033[31mDas entpacken der Datei: '" + file +
+              '" ist Fehlgeschlagen! Kopiere die Datei nach: "' + path + '"\033m')
+        shutil.copyfile(file, os.path.join(path, os.path.basename(file)))
 
 # Now, everybody has a folder let's traverse
 # checks for file of interest
-def is_of_interest(tar,pattern):
+
+
+def is_of_interest(tar, pattern):
     files_of_interest = []
-    for file in glob.glob(os.path.join(tar,pattern),recursive=True):
+    for file in glob.glob(os.path.join(tar, pattern), recursive=True):
         for viewer in ec_config["viewers"]:
             if(file.endswith(viewer)):
-                print("\033[33mShowing '" + file + "' with: " + viewer+ "(" + ec_config["viewers"][viewer] + ")\033[m")
-                files_of_interest.append(subprocess.Popen([ec_config["viewers"][viewer], file]))#,stdout=subprocess.PIPE)
+                print("\033[33mShowing '" + file + "' with: " +
+                      viewer + "(" + ec_config["viewers"][viewer] + ")\033[m")
+                # ,stdout=subprocess.PIPE)
+                files_of_interest.append(subprocess.Popen(
+                    [ec_config["viewers"][viewer], file]))
                 # all_files.append(subprocess.Popen([ec_config["viewers"][viewer], file]))
     return files_of_interest
-#iters over group, returns list:
+
+
+# iters over group, returns list:
 def decode_by_groupname(groupname):
-    if groupname.startswith("Group: "):
-        groupname = groupname[7:] # len("Group: ") = 7
+    if groupname.startswith(GROUP_TXT):
+        groupname = groupname[7:]  # length of "Group: " is 7
     else:
         return groupname
     for group in ec_config["partners"]:
-       if group["name"] == groupname:
+        if group["name"] == groupname:
             members = group["members"]
             if(len(members) == 2):
                 return members[0] + " und " + members[1]
@@ -200,12 +245,7 @@ def decode_by_groupname(groupname):
     return groupname
 
 
-# First of all: check for an command-line argument:
-
-# test_str = "Abgabe_Uebungsblatt_0--Fr_12-14_O27_-_2202--Name_censored--Hello.java"
-# print(re.search(ec_config["name_patterns"][0], test_str, re.IGNORECASE).groupdict())
-
-if os.path.isfile("./ecorrect.yml"): # maybe allow 'yaml' too?
+if os.path.isfile("./ecorrect.yml"):  # maybe allow 'yaml' too?
     print("Automatically loading 'ecorrect.yml'")
     parse_yaml("ecorrect.yml")
 
@@ -213,19 +253,23 @@ if os.path.isfile("./ecorrect.yml"): # maybe allow 'yaml' too?
 # just iters and returns None if none applies
 def check_match(regarray, filename):
     for m in regarray:
-        fmatch = re.search(m, filename, re.IGNORECASE)
-        if fmatch != None:
-            return fmatch
+        found_match = re.search(m, filename, re.IGNORECASE)
+        if found_match != None:
+            return found_match
     return None
 
 # searches for partners
-def get_partner(firstname,lastname):
+
+
+def get_partner(firstname, lastname):
     name = firstname + " " + lastname
     for group in ec_config["partners"]:
         for member in group["members"]:
             for repl in ec_config["replace_characters"]:
-                member = member.replace(repl, ec_config["replace_characters"][repl])
-                name = name.replace(repl, ec_config["replace_characters"][repl])
+                member = member.replace(
+                    repl, ec_config["replace_characters"][repl])
+                name = name.replace(
+                    repl, ec_config["replace_characters"][repl])
             if member == name:
                 return group
     return None
@@ -244,9 +288,201 @@ def get_partner(firstname,lastname):
 #
 #
 
+
+# register to store the start of the filter
+filter_start = ""
+
+
+def there_is_a_previous_correction():
+    return os.path.isdir(ec_config["correction_dir"])
+
+
+def ask_if_correction_should_be_continued():
+    global filter_start
+    print("Information, der Ordner: '" +
+          ec_config["correction_dir"] + '" existiert bereits! Bestehende Korrektur fortsetzen?')
+    if(input("Bitte gib 'y' ein, wenn du die Korrektur fortführen möchtest> ").lower().startswith("y")):
+        filter_start = input(
+            "Bitte gib den (Gruppen-)Namen ein, bei du die Korrektur fortführen möchtest> ")
+        print("Führe Korrektur fort...")
+        return False
+    return True
+
+
+def perform_extraction_of_singe_file_by_name(filename: str, found_match):
+    found_dict = found_match.groupdict()
+    # extract to group target
+    group = get_partner(found_dict["FirstName"], found_dict["LastName"])
+    group_tardir = None
+    if(group == None):
+        group_tardir = os.path.join(
+            ec_config["correction_dir"], found_dict["FirstName"] + " " + found_dict["LastName"])
+    else:
+        group_tardir = os.path.join(
+            ec_config["correction_dir"], GROUP_TXT + group["name"])
+
+    if os.path.isdir(group_tardir):
+        # print("The targetfile does exist. Adding the file")
+        pass
+    else:
+        os.makedirs(group_tardir)
+
+    filename_fullpath = os.path.join(ec_config["working_dir"], filename)
+    if(found_dict["FileExtension"] == "zip"):
+        extract_zip(filename_fullpath, group_tardir)
+    else:
+        shutil.copyfile(filename_fullpath, os.path.join(
+            group_tardir, found_dict["FileName"] + "." + found_dict["FileExtension"]))
+
+
+def perform_extraction_of_zip():
+    # delete working dir:
+    if os.path.isdir(ec_config["working_dir"]):
+        shutil.rmtree(ec_config["working_dir"])
+    if ec_config["clean_dirs"]:
+        if os.path.isdir(ec_config["correction_dir"]):
+            shutil.rmtree(ec_config["correction_dir"])
+    else:
+        print("Dir-Clean disabled!")
+
+    # print(ec_config)
+
+    # Zip file to unpack is stored in 'target_zip'
+    extract_zip(ec_config["target_zip"], ec_config["working_dir"])
+
+    # Iterate over all file
+    for filename in os.listdir(ec_config["working_dir"]):
+        found_match = check_match(ec_config["name_patterns"], filename)
+        if found_match != None:
+            perform_extraction_of_singe_file_by_name(filename, found_match)
+        else:
+            print("The File '" + filename +
+                  "' does not satisfy any pattern in 'name_patterns'!")
+
+
+def open_files_of_interest_while_correction(tar_grouppath: str):
+    all_files = []
+    for pattern in ec_config["files_of_interest"]:
+        open_files = is_of_interest(tar_grouppath, pattern)
+        all_files += open_files
+    return all_files
+
+
+def create_correction_template_without_sheet_data(correction_file: str, group_name: str):
+    if(ec_config["request_enter"]):
+        input(
+            "Quick-Correction enabled, no 'sheet_data' supplied. Press [Enter] to start generic writing> ")
+    if not os.path.exists(correction_file):
+        print("Create File...")
+        with open(correction_file, 'w') as correction:
+            correction.write(
+                ec_config["correction_template"]["pre"])
+            correction.write("Korrektur für: " + group_name + "\n")
+            correction.write(
+                ec_config["correction_template"]["in"] + "\n")
+            correction.write(
+                ec_config["correction_template"]["out"] + "\n" + ec_config["corrector"]+"\n")
+            correction.write(
+                ec_config["correction_template"]["post"])
+    subprocess.run([ec_config["text_editor"], correction_file])
+
+def write_task_block_for_correction_with_sheet_data(correction, block):
+    sub_task_letter = 'a'
+    for task in block["tasks"]:
+        if type(task) is dict:
+            i = [*task][0]
+            correction.write("  - " + task[i].ljust(int(ec_config["padding"])) + "   (x/" + str(
+                i) + " " + ("Punkt" if i == 1 else "Punkte") + ")\n\n")
+        else:
+            correction.write("  - Teilaufgabe " + sub_task_letter + ")  " + " ".ljust(int(
+                ec_config["padding"])-13) + " (x/" + str(task) + " " + ("Punkt" if task == 1 else "Punkte") + ")\n\n")
+        sub_task_letter = chr(
+            ord(sub_task_letter) + 1)
+        correction.write(
+            ec_config["correction_template"]["mid-sub"] + "\n")
+
+def write_file_with_sheet_data(correction, group_name : str):
+    correction.write(
+        ec_config["correction_template"]["pre"])
+    correction.write("Korrektur für: " +
+                     group_name + "\n\n")
+    correction.write(
+        ec_config["correction_template"]["in"] + "\n")
+    for block in ec_config["sheet_data"]:
+        correction.write(block["name"].ljust(int(ec_config["padding"])) + "   x/" + str(
+            block["total"]) + " " + ("Punkt" if block["total"] == 1 else "Punkte") + "\n")
+
+        if(len(block["tasks"]) > 1):
+            write_task_block_for_correction_with_sheet_data(correction, block)
+        else:
+            correction.write("\n")
+        correction.write(
+            ec_config["correction_template"]["mid"] + "\n")
+    correction.write(
+        ec_config["correction_template"]["out"] + "\n" + ec_config["corrector"]+"\n")
+    correction.write(
+        ec_config["correction_template"]["post"])
+
+
+def create_correction_template_with_sheet_data(correction_file: str, group_name: str):
+    if(ec_config["request_enter"]):
+        input(
+            "Quick-Correction enabled, 'sheet_data' supplied. Press [Enter] to start template-based writing> ")
+    if not os.path.exists(correction_file):
+        print("Create File...")
+        with open(correction_file, 'w') as correction:
+            write_file_with_sheet_data(correction, group_name)
+        subprocess.run([ec_config["text_editor"], correction_file])
+
+
+def perform_quick_correction_for_specific_group(group_name: str, dirname: str):
+    print("\033[34mShowing Data for: '" + dirname + "'\033[0m")
+    # iterate over all files of interest
+    tar_grouppath = os.path.join(ec_config["correction_dir"], dirname)
+    all_open_files = open_files_of_interest_while_correction(tar_grouppath)
+
+    correction_file = os.path.join(tar_grouppath, "korrektur-" + dirname.replace(
+        GROUP_TXT, "").replace(" ", "_") + ".txt")  # replace is sloppy
+    if(len(ec_config["sheet_data"]) == 0):
+        create_correction_template_without_sheet_data(
+            correction_file, group_name)
+    else:
+        create_correction_template_with_sheet_data(correction_file, group_name)
+    if(ec_config["request_enter"]):
+        input("Press [Enter] to continue")
+
+    for tmp in all_open_files:
+        # print("Returned: " + str(tmp.stdout.readline()))
+        tmp.terminate()
+
+
+def perform_quick_correction():
+    global filter_start
+    for dirname in sorted(os.listdir(ec_config["correction_dir"])):
+        group_name = decode_by_groupname(dirname)
+        if filter_start != "":
+            if not (filter_start in group_name or filter_start in dirname):
+                continue
+            else:
+                filter_start = ""
+        perform_quick_correction_for_specific_group(group_name, dirname)
+
+
+def main_routine():
+    do_extraction = True
+    if there_is_a_previous_correction():
+        do_extraction = ask_if_correction_should_be_continued()
+
+    if do_extraction:
+        perform_extraction_of_zip()
+
+    if ec_config["quick_correction"]:
+        perform_quick_correction()
+
+
 # We will use ist a library now :D
 if __name__ == "__main__":
-    if len(sys.argv) >= 2: # arg given
+    if len(sys.argv) >= 2:  # arg given
         for arg in sys.argv[1:]:
             # print("At: " + arg)
             if arg.endswith(".yml") or arg.endswith(".yaml"):
@@ -255,130 +491,11 @@ if __name__ == "__main__":
             elif arg.endswith(".zip"):
                 ec_config["target_zip"] = arg
             else:
-                print("The specified file seems to be invalid. Please supply a .zip or .yaml-File!")
+                print(
+                    "The specified file seems to be invalid. Please supply a .zip or .yaml-File!")
                 sys.exit(1)
     else:
         print("Please supply a .zip or .yaml-File!")
         sys.exit(1)
 
-    do_extraction = True
-    filter_start = ""
-    if os.path.isdir(ec_config["correction_dir"]):
-        print("Information, der Ordner: '" + ec_config["correction_dir"]+ '" existiert bereits! Bestehende Korrektur fortsetzen?')
-        if(input("Bitte gib 'y' ein, wenn du die Korrektur fortführen möchtest> ").lower().startswith("y")):
-            filter_start = input("Bitte gib den (Gruppen-)Namen ein, bei du die Korrektur fortführen möchtest> ")
-            print("Führe Korrektur fort...")
-            do_extraction = False
-
-    if do_extraction:
-        # delete working dir:
-        if os.path.isdir(ec_config["working_dir"]):
-            shutil.rmtree(ec_config["working_dir"])
-        if ec_config["clean_dirs"]:
-            if os.path.isdir(ec_config["correction_dir"]):
-                shutil.rmtree(ec_config["correction_dir"])
-        else:
-            print("Dir-Clean disabled!")
-
-        # print(ec_config)
-
-        # Zip file to unpack is stored in 'target_zip'
-        extract_zip(ec_config["target_zip"],ec_config["working_dir"])
-
-        # Iterate over all file
-        for filename in os.listdir(ec_config["working_dir"]):
-                fmatch = check_match(ec_config["name_patterns"], filename)
-                if fmatch != None:
-                    # print(fmatch.groupdict())
-                    fdict = fmatch.groupdict()
-                    #extract to group target
-                    group = get_partner(fdict["FirstName"],fdict["LastName"])
-                    group_tardir = None
-                    if(group == None):
-                        # print("\033[32mFor: '" + fdict["FirstName"] + " " + fdict["LastName"] + "' no group was found!\033[0m")
-                        group_tardir = os.path.join(ec_config["correction_dir"],fdict["FirstName"] + " " + fdict["LastName"])
-                    else:
-                        # print("\033[32mFor: '" + fdict["FirstName"] + " " + fdict["LastName"] + "' the group: " + group["name"] + " has been identified!\033[0m")
-                        group_tardir = os.path.join(ec_config["correction_dir"],"Group: " + group["name"])
-
-                    if os.path.isdir(group_tardir):
-                        # print("The targetfile does exist. Adding the file")
-                        pass
-                    else:
-                        # print("The targetfile doesn't exist. Creating...")
-                        os.makedirs(group_tardir)
-
-                    filename_fullpath = os.path.join(ec_config["working_dir"],filename)
-                    if(fdict["FileExtension"] == "zip"):
-                        extract_zip(filename_fullpath,group_tardir)
-                    else:
-                        shutil.copyfile(filename_fullpath,os.path.join(group_tardir,fdict["FileName"] + "." + fdict["FileExtension"]))
-                else:
-                    print("The File '" + filename + "' does not satisfy any pattern in 'name_patterns'!")
-
-
-
-    if(ec_config["quick_correction"]):
-        for dirname in sorted(os.listdir(ec_config["correction_dir"])):
-            group_name = decode_by_groupname(dirname)
-            if filter_start != "":
-                if not (filter_start in group_name or filter_start in dirname):
-                    continue
-                else:
-                    filter_start = ""
-            print("\033[34mShowing Data for: '" + dirname + "'\033[0m")
-            # iterate over all files of interest
-            tar_grouppath = os.path.join(ec_config["correction_dir"],dirname)
-            all_files = []
-            for pattern in ec_config["files_of_interest"]:
-                open_files = is_of_interest(tar_grouppath,pattern)
-                all_files += open_files
-            correction_file = os.path.join(tar_grouppath,"korrektur-" + dirname.replace("Group: ","").replace(" ","_") + ".txt") # replace is sloppy
-            if(len(ec_config["sheet_data"]) == 0):
-                if(ec_config["request_enter"]):
-                    input("Quick-Correction enabled, no 'sheet_data' supplied. Press [Enter] to start generic writing> ")
-                if not os.path.exists(correction_file):
-                    print("Create File...")
-                    with open(correction_file,'w') as correction:
-                        correction.write(ec_config["correction_template"]["pre"])
-                        correction.write("Korrektur für: " + group_name +"\n")
-                        correction.write(ec_config["correction_template"]["in"] + "\n")
-                        correction.write(ec_config["correction_template"]["out"] + "\n" + ec_config["corrector"]+"\n")
-                        correction.write(ec_config["correction_template"]["post"])
-                subprocess.run([ec_config["text_editor"], correction_file])
-            else:
-                if(ec_config["request_enter"]):
-                    input("Quick-Correction enabled, 'sheet_data' supplied. Press [Enter] to start template-based writing> ")
-                if not os.path.exists(correction_file):
-                    print("Create File...")
-                    with open(correction_file,'w') as correction:
-                        correction.write(ec_config["correction_template"]["pre"])
-                        correction.write("Korrektur für: " + group_name + "\n\n")
-                        correction.write(ec_config["correction_template"]["in"] + "\n")
-                        for block in ec_config["sheet_data"]:
-                            correction.write(block["name"].ljust(int(ec_config["padding"])) + "   x/" + str(block["total"]) + " " + ("Punkt" if block["total"]==1 else "Punkte") + "\n")
-                            sub_task_letter = 'a'
-                            if(len(block["tasks"])>1):
-                                for task in block["tasks"]:
-                                    if type(task) is dict:
-                                        i = [*task][0]
-                                        correction.write("  - "  + task[i].ljust(int(ec_config["padding"])) + "   (x/" + str(i) + " " + ("Punkt" if i==1 else "Punkte") + ")\n\n")
-                                    else:
-                                        correction.write("  - Teilaufgabe " + sub_task_letter + ")  " + " ".ljust(int(ec_config["padding"])-13) + " (x/" + str(task) + " " + ("Punkt" if task==1 else "Punkte") + ")\n\n")
-                                    sub_task_letter = chr(ord(sub_task_letter) + 1)
-                                    correction.write(ec_config["correction_template"]["mid-sub"] + "\n")
-                            else:
-                                    correction.write("\n")
-                            correction.write(ec_config["correction_template"]["mid"] + "\n")
-                        correction.write(ec_config["correction_template"]["out"] + "\n" + ec_config["corrector"]+"\n")
-                        correction.write(ec_config["correction_template"]["post"])
-
-                subprocess.run([ec_config["text_editor"], correction_file])
-            if(ec_config["request_enter"]):
-                input("Press [Enter] to continue")
-
-
-
-            for tmp in all_files:
-                # print("Returned: " + str(tmp.stdout.readline()))
-                tmp.terminate()
+    main_routine()

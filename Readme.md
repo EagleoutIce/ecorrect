@@ -26,7 +26,7 @@ The script was written for Python 3.5 and above. The Defaults have been set to w
 
 *Please Note: This script was written in ~2-3 hours. Please be kind when analyzing the code. Feel free to make any optimizations/create a pull-request.*
 
-## A quick example on ubuntu:
+## A quick example on ubuntu
 
 Complete these steps:
 
