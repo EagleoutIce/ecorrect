@@ -386,6 +386,7 @@ def create_correction_template_without_sheet_data(correction_file: str, group_na
                 ec_config["correction_template"]["post"])
     subprocess.run([ec_config["text_editor"], correction_file])
 
+
 def write_task_block_for_correction_with_sheet_data(correction, block):
     sub_task_letter = 'a'
     for task in block["tasks"]:
@@ -401,7 +402,8 @@ def write_task_block_for_correction_with_sheet_data(correction, block):
         correction.write(
             ec_config["correction_template"]["mid-sub"] + "\n")
 
-def write_file_with_sheet_data(correction, group_name : str):
+
+def write_file_with_sheet_data(correction, group_name: str):
     correction.write(
         ec_config["correction_template"]["pre"])
     correction.write("Korrektur für: " +
