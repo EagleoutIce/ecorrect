@@ -47,7 +47,8 @@ ec_config = {
     "name_patterns": [  # all being case insensitive
         "Abgabe_Uebungsblatt_(?P<Number>\d+)--(?P<WeekDay>Mo|Di|Mi|Do|Fr|Sa|So)_(?P<StartTime>\d+)-(?P<EndTime>\d+)_(?P<Where>[A-Za-z0-9]*)_-_(?P<WhereRoom>[A-Za-z0-9]*)--(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)_(?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)--(?P<FileName>[a-zäöüÄÖÜß0-9 _\-]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)",
         "(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)[ _](?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)_(\d+)_assignsubmission_file_(?P<FileName>[a-zA-ZäöüÄÖÜÜß0-9 _\-\[\](),]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9, _\-]*)",
-        "Abgabe_Uebungsblatt_(?P<Number>\d+)--(?P<WeekDay>Mo|Di|Mi|Do|Fr|Sa|So)_(?P<StartTime>\d+)-(?P<EndTime>\d+)_(?P<Where>[A-Za-z0-9]*)--(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)(_(?P<MiddleName>.*))*_(?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)--(?P<FileName>[a-zA-ZäöüÄÖÜß0-9 _\-]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)"
+        "Abgabe_Uebungsblatt_(?P<Number>\d+)--(?P<WeekDay>Mo|Di|Mi|Do|Fr|Sa|So)_(?P<StartTime>\d+)-(?P<EndTime>\d+)_(?P<Where>[A-Za-z0-9]*)--(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)(_(?P<MiddleName>.*))*_(?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)--(?P<FileName>[a-zA-ZäöüÄÖÜß0-9 _\-]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)",
+        "Uebungsblatt_(?P<Number>\d+)--Gruppe_(?P<Gruppe>\d+)--(?P<FirstName>[A-Za-zäöüÄÖÜß0-9]*)(_(?P<MiddleName>.*))*_(?P<LastName>[A-Za-zäöüÄÖÜß0-9]*)--(?P<FileName>[a-zA-ZäöüÄÖÜß0-9 _\-]*)\.(?P<FileExtension>[A-Za-zäöüÄÖÜß0-9 _\-]*)"
     ],
     "partners": [],
     "viewers": {
