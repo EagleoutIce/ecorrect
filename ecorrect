@@ -255,7 +255,7 @@ if os.path.isfile("./ecorrect.yml"):  # maybe allow 'yaml' too?
 def check_match(regarray, filename):
     for m in regarray:
         found_match = re.search(m, filename, re.IGNORECASE)
-        if found_match != None:
+        if found_match is not None:
             return found_match
     return None
 
@@ -315,7 +315,7 @@ def perform_extraction_of_singe_file_by_name(filename: str, found_match):
     # extract to group target
     group = get_partner(found_dict["FirstName"], found_dict["LastName"])
     group_tardir = None
-    if(group == None):
+    if group is None:
         group_tardir = os.path.join(
             ec_config["correction_dir"], found_dict["FirstName"] + " " + found_dict["LastName"])
     else:
@@ -354,7 +354,7 @@ def perform_extraction_of_zip():
     # Iterate over all file
     for filename in os.listdir(ec_config["working_dir"]):
         found_match = check_match(ec_config["name_patterns"], filename)
-        if found_match != None:
+        if found_match is not None:
             perform_extraction_of_singe_file_by_name(filename, found_match)
         else:
             print("The File '" + filename +
